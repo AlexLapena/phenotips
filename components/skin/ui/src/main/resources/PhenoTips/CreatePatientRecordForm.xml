@@ -61,23 +61,8 @@ $xwiki.jsx.use('PhenoTips.CreatePatientRecordForm')##
       #foreach ($e in $services.uix.getExtensions('org.phenotips.newPatientForm'))
         &lt;input type="hidden" name="$!e.parameters.name" value="$!e.parameters.value" /&gt;
       #end
-<<<<<<< HEAD
-    #end
-    ##
-    ## Project choosing section
-    $xwiki.ssx.use('PhenoTips.ProjectBindingClass')##
-    &lt;input type="hidden" name="projectsSheet" value="PhenoTips.ProjectBindingSheet" /&gt;
-    ##
-    ## Extensions displayed before the content
-    #foreach ($e in $services.uix.getExtensions('org.phenotips.newPatientForm'))
-      &lt;input type="hidden" name="$!e.parameters.name" value="$!e.parameters.value" /&gt;
-    #end
-    &lt;label for="create-patient-record"&gt;&lt;span class="fa fa-plus-circle"&gt; &lt;/span&gt;&lt;input type="submit" id="create-patient-record" value="$services.localization.render('phenotips.globalHeader.createPatient')"/&gt;&lt;/label&gt;
-  &lt;/div&gt;&lt;/form&gt;
-=======
       &lt;label for="create-patient-record"&gt;&lt;span class="fa fa-plus-circle"&gt; &lt;/span&gt;&lt;input type="submit" id="create-patient-record" title="$services.localization.render('phenotips.globalHeader.createPatient')" value="$services.localization.render('phenotips.globalHeader.createPatient')"/&gt;&lt;/label&gt;
    &lt;/div&gt;&lt;/form&gt;
->>>>>>> 738a9ff... issue-1987-projects
 #end
 {{/html}}{{/velocity}}</content>
   <object>
