@@ -43,10 +43,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
-
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.xpn.xwiki.doc.XWikiDocument;
 import com.xpn.xwiki.web.Utils;
@@ -62,10 +61,6 @@ import com.xpn.xwiki.web.Utils;
  */
 public class DataToCellConverter
 {
-    /** Logging helper object. */
-    @Inject
-    private Logger logger;
-
     private static final String ALLERGIES = "allergies";
 
     private Map<String, Set<String>> enabledHeaderIdsBySection = new HashMap<String, Set<String>>();
@@ -77,6 +72,8 @@ public class DataToCellConverter
     public static final Integer charactersPerLine = 100;
 
     private TranslationManager translationManager;
+    
+    private Logger logger = LoggerFactory.getLogger(DataToCellConverter.class);
 
     public DataToCellConverter()
     {
@@ -729,8 +726,7 @@ public class DataToCellConverter
         Map<String, String> fieldToHeaderMap = new LinkedHashMap<String, String>();
         List<String> fields =
             new ArrayList<String>(Arrays.asList("global_mode_of_inheritance", "miscarriages", "consanguinity",
-                "family_history",
-                "maternal_ethnicity", "paternal_ethnicity"));
+                "family_history", "maternal_ethnicity", "paternal_ethnicity"));
         fields.retainAll(enabledFields);
         Set<String> fieldSet = new HashSet<String>(fields);
         this.enabledHeaderIdsBySection.put(sectionName, fieldSet);
