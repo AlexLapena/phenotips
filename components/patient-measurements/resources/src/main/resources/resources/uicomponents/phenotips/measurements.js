@@ -675,7 +675,7 @@ var PhenoTips = (function(PhenoTips) {
         this.fetchAndRenderPercentileSd();
 
         // Attach handlers
-        ['input', 'phenotips:measurement-updated'].each((function(ev) {
+        ['input', 'blur', 'phenotips:measurement-updated'].each((function(ev) {
           this._valueEl.observe(ev, this.fetchAndRenderPercentileSd);
         }).bind(this));
         ['duration:change', 'duration:format'].each((function(ev) {
@@ -688,9 +688,10 @@ var PhenoTips = (function(PhenoTips) {
     },
 
     fetchAndRenderPercentileSd: function(e) {
-      if (this._valueEl.__validation && !this._valueEl.__validation.validate()) {
+      if (this._valueEl.__validation && !this._valueEl.__validation.validate() || this._valueEl.value == 0) {
         return;
       }
+      var eventType = e ? e.type : '';
       var pctlEl = this.el.select('.feedback')[0];
       var fetchParams = {
         'measurement': this.el.select('[name$=type]')[0].value,
@@ -710,7 +711,9 @@ var PhenoTips = (function(PhenoTips) {
           requestHeaders: {Accept : "application/json"},
           onSuccess: (function(resp) {
             this._renderPercentileSd(pctlEl, resp.responseJSON);
-            this._selectAssocPhenotypes(resp.responseJSON['associated-terms']);
+            if (eventType == 'blur') {
+              this._selectAssocPhenotypes(resp.responseJSON['associated-terms']);
+            }
           }).bind(this),
           onFailure: function (response) {
             if (response.status == 500) {
