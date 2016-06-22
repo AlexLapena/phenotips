@@ -744,7 +744,9 @@ var PhenoTips = (function(PhenoTips) {
 
         displayStr = values.percentile;
         displayStr += '%ile';
-        displayStr += ' (' + values.stddev.toFixed(2) + 'SD)';
+        if (values.stddev < 100 && values.stddev > -100) {
+          displayStr += ' (' + values.stddev.toFixed(2) + 'SD)';
+        }
       }
 
       el.innerText = displayStr;

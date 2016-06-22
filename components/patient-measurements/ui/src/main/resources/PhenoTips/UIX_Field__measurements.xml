@@ -204,7 +204,7 @@ $xwiki.jsfx.use('uicomponents/phenotips/measurementsUnitSwitcher.js', true)##
     &lt;input type="hidden" name="PhenoTips.MeasurementClass_${id}_date" value=""$disabled&gt;
     &lt;input type="hidden" name="PhenoTips.MeasurementClass_${id}_side" value="$!{side}"$disabled&gt;
   &lt;/td&gt;
-  &lt;td class="feedback#if ("$!val" != "" &amp;&amp; "$!handler.getName()" != "armspan") $services.measurements.getFuzzyValue($sd)#end"&gt;#if ("$!val" != "")$!eval#end&lt;/td&gt;
+  &lt;td class="feedback#if ("$!val" != "" &amp;&amp; "$!handler.getName()" != "armspan") $services.measurements.getFuzzyValue($sd)#end"&gt;#if ("$!val" != "" &amp;&amp; $sd &lt; 100 &amp;&amp; $sd &gt; -100)$!eval#end&lt;/td&gt;
 &lt;/tr&gt;
 #end##
 ##
