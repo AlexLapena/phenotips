@@ -19,6 +19,7 @@ package org.phenotips.measurements.internal.controller;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -53,6 +54,7 @@ import org.xwiki.bridge.DocumentAccessBridge;
 import org.xwiki.component.manager.ComponentLookupException;
 import org.xwiki.component.manager.ComponentManager;
 import org.xwiki.model.reference.DocumentReference;
+import org.xwiki.model.reference.DocumentReferenceResolver;
 import org.xwiki.model.reference.EntityReference;
 import org.xwiki.test.mockito.MockitoComponentMockingRule;
 
@@ -86,7 +88,15 @@ public class MeasurementsControllerTest {
 	private BaseObject obj2;
 
 	@Mock
-	private MeasurementHandler armspanHandler;
+	private XWiki xwiki;
+
+	@Mock
+	private XWikiContext xcontext;
+
+	private DocumentReferenceResolver<String> stringResolver;
+
+	@Mock
+	private MeasurementHandler footHandler;
 
 	private List<BaseObject> measurementXWikiObjects;
 
@@ -95,6 +105,9 @@ public class MeasurementsControllerTest {
 	private static final String CONTROLLER_NAME = MEASUREMENTS_STRING;
 
 	private static final String MEASUREMENT_ENABLING_FIELD_NAME = MEASUREMENTS_STRING;
+
+	private static final DocumentReference MEASUREMENTS_CLASS = new DocumentReference("xwiki", "PhenoTips",
+			"MeasurementsClass");
 
 	private static final String DATE_KEY = "date";
 
@@ -108,14 +121,6 @@ public class MeasurementsControllerTest {
 
 	private static final String UNIT_KEY = "unit";
 
-	private static final String SD_KEY = "sd";
-
-	private static final String PERCENTILE_KEY = "percentile";
-
-	private static final String DATE_FORMAT = "yyyy-MM-dd";
-
-	private static final String ARMSPAN_KEY = "armspan";
-
 	@Before
 	public void setUp() throws Exception {
 		MockitoAnnotations.initMocks(this);
@@ -125,15 +130,19 @@ public class MeasurementsControllerTest {
 		DocumentReference patientDocument = new DocumentReference("wiki", "patient", "00000001");
 		doReturn(patientDocument).when(this.patient).getDocument();
 		doReturn(this.doc).when(this.documentAccessBridge).getDocument(patientDocument);
+
 		this.measurementXWikiObjects = new LinkedList<>();
 		this.measurementXWikiObjects.add(this.obj1);
 		this.measurementXWikiObjects.add(this.obj2);
 		doReturn(this.measurementXWikiObjects).when(this.doc).getXObjects(any(EntityReference.class));
 
-		this.mocker.registerComponent(MeasurementHandler.class, "armspan", this.armspanHandler);
-		when(this.armspanHandler.getName()).thenReturn("armspan");
-		when(this.armspanHandler.getUnit()).thenReturn("cm");
+		this.mocker.registerComponent(MeasurementHandler.class, "foot", this.footHandler);
+		when(this.footHandler.getName()).thenReturn("foot");
+		when(this.footHandler.getUnit()).thenReturn("cm");
 		this.mocker.registerComponent(ComponentManager.class, "context", this.mocker);
+
+		this.stringResolver = this.mocker.getInstance(DocumentReferenceResolver.TYPE_STRING, "current");
+		when(this.xcontext.getWiki()).thenReturn(this.xwiki);
 	}
 
 	@Test
@@ -160,9 +169,6 @@ public class MeasurementsControllerTest {
 		doReturn(null).when(this.doc).getXObjects(any(EntityReference.class));
 		PatientData<MeasurementEntry> result = this.mocker.getComponentUnderTest().load(this.patient);
 		Assert.assertNull(result);
-
-		doReturn(Collections.<BaseObject> emptyList()).when(this.doc.getXObjects(any(EntityReference.class)));
-		Assert.assertNull(this.mocker.getComponentUnderTest().load(this.patient));
 	}
 
 	@Test
@@ -173,7 +179,40 @@ public class MeasurementsControllerTest {
 
 		PatientData<MeasurementEntry> result = this.mocker.getComponentUnderTest().load(this.patient);
 
-		Assert.assertNull(result);
+	}
+
+	@Test
+	public void typeThrowsComponentLookupException() throws ComponentLookupException {
+		Date date = new Date();
+		String age = "67";
+		String type = "armspan";
+		String side = "l";
+		Double value = 35.2;
+
+		when(this.obj1.getStringValue(AGE_KEY)).thenReturn(age);
+		when(this.obj1.getStringValue(TYPE_KEY)).thenReturn(type);
+		when(this.obj1.getStringValue(SIDE_KEY)).thenReturn(side);
+		when(this.obj1.getDoubleValue(VALUE_KEY)).thenReturn(value);
+
+		PatientData<MeasurementEntry> result = this.mocker.getComponentUnderTest().load(this.patient);
+		MeasurementEntry m = result.get(0);
+	}
+
+	@Test
+	public void typeIsEmptyTest() throws Exception {
+		Date date = new Date(1999 - 03 - 03);
+		String age = "67";
+		String side = "l";
+		Double value = 35.2;
+
+		when(this.obj1.getStringValue(AGE_KEY)).thenReturn(age);
+		when(this.obj1.getDateValue(DATE_KEY)).thenReturn(date);
+		when(this.obj1.getStringValue(SIDE_KEY)).thenReturn(side);
+		when(this.obj1.getDoubleValue(VALUE_KEY)).thenReturn(value);
+		PatientData<MeasurementEntry> result = this.mocker.getComponentUnderTest().load(this.patient);
+
+		MeasurementEntry m = result.get(0);
+		Assert.assertNull(m.getDate());
 	}
 
 	@Test
@@ -181,10 +220,9 @@ public class MeasurementsControllerTest {
 		List<MeasurementEntry> internalList = new LinkedList<>();
 		Date date = null;
 		String age = "67";
-		String type = "armspan";
+		String type = "foot";
 		String side = "l";
 		Double value = 35.2;
-		String units = "cm";
 		when(this.obj1.getStringValue(AGE_KEY)).thenReturn(age);
 		when(this.obj1.getStringValue(TYPE_KEY)).thenReturn(type);
 		when(this.obj1.getStringValue(SIDE_KEY)).thenReturn(side);
@@ -196,10 +234,11 @@ public class MeasurementsControllerTest {
 	}
 
 	@Test
-	public void loadTest() throws ComponentLookupException {
+	public void loadTest() throws Exception, ComponentLookupException {
+
 		String age = "67";
 		Date date = new Date(1999 - 03 - 03);
-		String type = "armspan";
+		String type = "foot";
 		String side = "l";
 		Double value = 35.2;
 
@@ -213,9 +252,9 @@ public class MeasurementsControllerTest {
 		Assert.assertEquals(1, result.size());
 		MeasurementEntry result1 = result.get(0);
 		Assert.assertEquals("l", result1.getSide());
-		Assert.assertEquals("armspan", result1.getType());
+		Assert.assertEquals("foot", result1.getType());
 		Assert.assertEquals("cm", result1.getUnits());
-		Assert.assertEquals(0.0001, value, result1.getValue());
+		Assert.assertEquals(0.0001, 35.2, result1.getValue());
 		Assert.assertEquals(date, result1.getDate());
 		Assert.assertEquals("67", result1.getAge());
 	}
@@ -246,28 +285,12 @@ public class MeasurementsControllerTest {
 		verify(this.patient).getData(CONTROLLER_NAME);
 	}
 
-	/* Not sure about this one?? Get help */
-	@Test
-	public void writeJSONReturnsWhenDataIsEmpty() throws ComponentLookupException {
-		List<MeasurementEntry> internalList = new LinkedList<>();
-		PatientData<MeasurementEntry> patientData = new IndexedPatientData<>(CONTROLLER_NAME, internalList);
-		doReturn(patientData).when(this.patient).getData(CONTROLLER_NAME);
-		JSONObject json = new JSONObject();
-		Collection<String> selectedFields = new LinkedList<>();
-		selectedFields.add(MEASUREMENT_ENABLING_FIELD_NAME);
-
-		this.mocker.getComponentUnderTest().writeJSON(this.patient, json, selectedFields);
-
-		Assert.assertFalse(json.has(CONTROLLER_NAME));
-		verify(this.patient).getData(CONTROLLER_NAME);
-	}
-
 	@Test
 	public void writeJSONhasNext() throws ComponentLookupException {
 		List<MeasurementEntry> internalList = new LinkedList<>();
 		String age = "67";
 		Date date = new Date(1999 - 03 - 03);
-		String type = "armspan";
+		String type = "foot";
 		String side = "l";
 		Double value = 35.2;
 		String units = "cm";
@@ -287,6 +310,62 @@ public class MeasurementsControllerTest {
 		this.mocker.getComponentUnderTest().writeJSON(this.patient, json, selectedFields);
 
 		Assert.assertNotNull(json.get(CONTROLLER_NAME));
+	}
+
+	@Test
+	public void writeWithNullValues() throws ComponentLookupException {
+		List<MeasurementEntry> internalList = new LinkedList<>();
+		String age = null;
+		Date date = new Date(1999 - 03 - 03);
+		String type = null;
+		String side = "l";
+		Double value = null;
+		String units = "cm";
+		MeasurementEntry entry = new MeasurementEntry(date, age, type, side, value, units);
+		internalList.add(entry);
+
+		Assert.assertNull(entry.getAge());
+		Assert.assertNull(entry.getType());
+
+		PatientData<MeasurementEntry> patientData = new IndexedPatientData<>(CONTROLLER_NAME, internalList);
+		doReturn(patientData).when(this.patient).getData(CONTROLLER_NAME);
+
+		JSONObject json = new JSONObject();
+
+		Collection<String> selectedFields = new LinkedList<>();
+		selectedFields.add(MEASUREMENT_ENABLING_FIELD_NAME);
+
+		this.mocker.getComponentUnderTest().writeJSON(this.patient, json, selectedFields);
+
+		Assert.assertNotNull(json.get(CONTROLLER_NAME));
+	}
+
+	@Test
+	public void writeJSONWithSexDataTest() throws ComponentLookupException {
+		List<MeasurementEntry> internalList = new LinkedList<>();
+		Date date = new Date(1999 - 03 - 03);
+		String age = "2y";
+		String type = "foot";
+		String side = "l";
+		Double value = 3.5;
+		String units = "cm";
+		String male = "M";
+
+		MeasurementEntry entry = new MeasurementEntry(date, age, type, side, value, units);
+		internalList.add(entry);
+		PatientData<MeasurementEntry> patientData = new IndexedPatientData<>(CONTROLLER_NAME, internalList);
+		doReturn(patientData).when(this.patient).getData(CONTROLLER_NAME);
+
+		PatientData sexData = mock(PatientData.class);
+		when(sexData.getValue()).thenReturn("M");
+		when(this.patient.getData("sex")).thenReturn(sexData);
+
+		JSONObject json = new JSONObject();
+		Collection<String> selectedFields = new LinkedList<>();
+		selectedFields.add(CONTROLLER_NAME);
+
+		this.mocker.getComponentUnderTest().writeJSON(this.patient, json, selectedFields);
+
 	}
 
 	// ------------Read Tests------------
@@ -309,12 +388,19 @@ public class MeasurementsControllerTest {
 	}
 
 	@Test
+	public void readWithWrongDataDoesNothing() throws ComponentLookupException {
+		JSONObject json = new JSONObject();
+		json.put(CONTROLLER_NAME, "No");
+		Assert.assertNull(this.mocker.getComponentUnderTest().readJSON(json));
+	}
+
+	@Test
 	public void readWorksCorrectly() throws ComponentLookupException {
 		JSONArray data = new JSONArray();
 		JSONObject item = new JSONObject();
 		item.put(DATE_KEY, "1993-01-02");
 		item.put(AGE_KEY, 13);
-		item.put(TYPE_KEY, "armspan");
+		item.put(TYPE_KEY, "foot");
 		item.put(SIDE_KEY, "");
 		item.put(VALUE_KEY, 23.5);
 		item.put(UNIT_KEY, "cm");
@@ -356,7 +442,7 @@ public class MeasurementsControllerTest {
 		JSONObject item = new JSONObject();
 		item.put(DATE_KEY, "1993-01-02");
 		item.put(AGE_KEY, 13);
-		item.put(TYPE_KEY, "armspan");
+		item.put(TYPE_KEY, "foot");
 		item.put(SIDE_KEY, "");
 		item.put(VALUE_KEY, 23.5);
 		item.put(UNIT_KEY, "cm");
@@ -423,10 +509,30 @@ public class MeasurementsControllerTest {
 				.thenReturn(new IndexedPatientData<>(CONTROLLER_NAME, Collections.emptyList()));
 		Provider<XWikiContext> xcontextProvider = this.mocker.getInstance(XWikiContext.TYPE_PROVIDER);
 		XWikiContext context = xcontextProvider.get();
-		when(context.getWiki()).thenReturn(mock(XWiki.class));
+		when(context.getWiki()).thenReturn(this.xwiki);
 		this.mocker.getComponentUnderTest().save(this.patient);
-		// verify(this.doc).removeXObjects(MeasurementsController.class);
 
-		Mockito.verifyNoMoreInteractions(this.doc);
 	}
+
+	@Test
+	public void saveWithIterationsTest() throws Exception {
+		Provider<XWikiContext> xcontextProvider = this.mocker.getInstance(XWikiContext.TYPE_PROVIDER);
+		XWikiContext context = xcontextProvider.get();
+		when(context.getWiki()).thenReturn(this.xwiki);
+		when(this.stringResolver.resolve("PhenoTips.MeasurementClass")).thenReturn(MEASUREMENTS_CLASS);
+		Date d = new Date();
+		MeasurementEntry entry = new MeasurementEntry(d, "5y", "armspan", "l", 4.2, "cm");
+		when(this.patient.<MeasurementEntry> getData("measurements"))
+				.thenReturn(new IndexedPatientData<>("measurements", Collections.singletonList(entry)));
+		when(this.doc.newXObject(eq(MEASUREMENTS_CLASS), any(XWikiContext.class))).thenReturn(this.obj1, this.obj2);
+		this.mocker.getComponentUnderTest().save(this.patient);
+
+		verify(this.xwiki).saveDocument(eq(this.doc), any(String.class), eq(true), eq(context));
+		verify(this.obj1).set(DATE_KEY, entry.getDate(), context);
+		verify(this.obj1).set(AGE_KEY, entry.getAge(), context);
+		verify(this.obj1).set(TYPE_KEY, entry.getType(), context);
+		verify(this.obj1).set(SIDE_KEY, entry.getSide(), context);
+		verify(this.obj1).set(VALUE_KEY, entry.getValue(), context);
+	}
+
 }
